@@ -1,131 +1,1131 @@
-
-{% extends "base.html" %}
-
-{% block content %}
-<div class="row">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5>Simulation Parameters</h5>
-            </div>
-            <div class="card-body">
-                <form id="simulationForm">
-                    <div class="mb-3">
-                        <label class="form-label">Population Size</label>
-                        <input type="number" class="form-control" id="population" value="15000">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Initial Infected</label>
-                        <input type="number" class="form-control" id="initial_infected" value="1">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Transmission Rate (per day)</label>
-                        <input type="number" class="form-control" id="transmission_rate" value="0.01" step="0.001">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Infectious Period (days)</label>
-                        <input type="number" class="form-control" id="infectious_period" value="3">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Incubation Period (days)</label>
-                        <input type="number" class="form-control" id="incubation_period" value="2">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Simulation Days</label>
-                        <input type="number" class="form-control" id="simulation_days" value="14">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Number of Simulation Runs</label>
-                        <input type="number" class="form-control" id="num_runs" value="100">
-                    </div>
-                    
-                    <hr>
-                    <h6>Interventions</h6>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Vaccination Rate</label>
-                        <input type="number" class="form-control" id="vaccination_rate" value="0.0" step="0.01" min="0" max="1">
-                        <small class="form-text text-muted">0.0 to 1.0 (0% to 100%)</small>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Mask Effectiveness</label>
-                        <input type="number" class="form-control" id="mask_effectiveness" value="0.0" step="0.01" min="0" max="1">
-                        <small class="form-text text-muted">0.0 to 1.0 (0% to 100%)</small>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Social Distancing Effectiveness</label>
-                        <input type="number" class="form-control" id="social_distancing" value="0.0" step="0.01" min="0" max="1">
-                        <small class="form-text text-muted">0.0 to 1.0 (0% to 100%)</small>
-                    </div>
-                    
-                    <button type="button" class="btn btn-primary w-100" onclick="runSimulation()">
-                        Run Simulation
-                    </button>
-                    
-                    <button type="button" class="btn btn-secondary w-100 mt-2" onclick="compareScenarios()">
-                        Compare Scenarios
-                    </button>
-                </form>
-            </div>
-        </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurora Flu Simulation - Enhanced SEIRD Model</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
         
-        <div class="card mt-3">
-            <div class="card-header">
-                <h5>Statistics</h5>
+        .card {
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: none;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.95);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            border: none;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%) !important;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 10px 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
+            border: none;
+            border-radius: 25px;
+            color: #2d3436;
+            font-weight: 600;
+        }
+        
+        .form-control {
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .statistics-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.8rem;
+            padding: 12px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .statistics-label {
+            font-weight: 600;
+            color: #2d3436;
+        }
+        
+        .statistics-value {
+            color: #667eea;
+            font-weight: 700;
+        }
+        
+        .intervention-section {
+            background: linear-gradient(135deg, #e8f4f8 0%, #f1f8ff 100%);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #3498db;
+        }
+        
+        .plot-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.1);
+        }
+        
+        .tab-content {
+            background: white;
+            border-radius: 0 15px 15px 15px;
+            padding: 20px;
+        }
+        
+        .nav-tabs .nav-link {
+            border-radius: 15px 15px 0 0;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .nav-tabs .nav-link.active {
+            background: white;
+            color: #2d3436;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        .loading-spinner {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .metric-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1">
+                🦠 Aurora Winter Engineering Symposium - Enhanced Flu Simulation (SEIRD Model)
+            </span>
+        </div>
+    </nav>
+    
+    <div class="container mt-4">
+        <div class="row">
+            <!-- Left Panel - Parameters -->
+            <div class="col-md-4">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">🎛️ Simulation Parameters</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Basic Parameters -->
+                        <h6 class="text-primary">Basic Parameters</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Population Size</label>
+                            <input type="number" class="form-control" id="population" value="15000">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Initial Infected</label>
+                            <input type="number" class="form-control" id="initial_infected" value="1">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Transmission Rate (per day)</label>
+                            <input type="number" class="form-control" id="transmission_rate" value="0.01" step="0.001">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Infectious Period (days)</label>
+                            <input type="number" class="form-control" id="infectious_period" value="7">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Incubation Period (days)</label>
+                            <input type="number" class="form-control" id="incubation_period" value="2">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Mortality Rate</label>
+                            <input type="number" class="form-control" id="mortality_rate" value="0.002" step="0.001">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Hospitalization Rate</label>
+                            <input type="number" class="form-control" id="hospitalization_rate" value="0.05" step="0.01">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Simulation Days</label>
+                            <input type="number" class="form-control" id="simulation_days" value="365">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Number of Simulation Runs</label>
+                            <input type="number" class="form-control" id="num_runs" value="100">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Location Type</label>
+                            <select class="form-control" id="location_type">
+                                <option value="office">Office</option>
+                                <option value="classroom">Classroom</option>
+                                <option value="restaurant">Restaurant</option>
+                                <option value="home">Home</option>
+                                <option value="outdoor">Outdoor</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Intervention Parameters -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">🛡️ Intervention Parameters</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Vaccination Parameters -->
+                        <div class="intervention-section">
+                            <h6 class="text-info">💉 Vaccination Strategy</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Vaccination Rate (daily)</label>
+                                <input type="number" class="form-control" id="vaccination_rate" value="0.0" step="0.001" min="0" max="1">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Vaccine Supply Delay (days)</label>
+                                <input type="number" class="form-control" id="vaccine_supply_delay" value="0">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Second Dose Delay (days)</label>
+                                <input type="number" class="form-control" id="second_dose_delay" value="21">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">1st Dose Effectiveness</label>
+                                <input type="number" class="form-control" id="vaccine_effectiveness_1dose" value="0.5" step="0.01" min="0" max="1">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">2nd Dose Effectiveness</label>
+                                <input type="number" class="form-control" id="vaccine_effectiveness_2dose" value="0.85" step="0.01" min="0" max="1">
+                            </div>
+                        </div>
+                        
+                        <!-- Mask Parameters -->
+                        <div class="intervention-section">
+                            <h6 class="text-warning">😷 Mask Strategy</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Mask Effectiveness</label>
+                                <input type="number" class="form-control" id="mask_effectiveness" value="0.0" step="0.01" min="0" max="1">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Mask Compliance</label>
+                                <input type="number" class="form-control" id="mask_compliance" value="1.0" step="0.01" min="0" max="1">
+                            </div>
+                        </div>
+                        
+                        <!-- Social Distancing Parameters -->
+                        <div class="intervention-section">
+                            <h6 class="text-success">📏 Social Distancing</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Social Distancing Effectiveness</label>
+                                <input type="number" class="form-control" id="social_distancing" value="0.0" step="0.01" min="0" max="1">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Social Distancing Compliance</label>
+                                <input type="number" class="form-control" id="social_distancing_compliance" value="1.0" step="0.01" min="0" max="1">
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <button type="button" class="btn btn-primary w-100 mb-2" onclick="runSimulation()">
+                            🚀 Run Single Simulation
+                        </button>
+                        
+                        <button type="button" class="btn btn-secondary w-100 mb-2" onclick="compareScenarios()">
+                            📊 Compare All Scenarios
+                        </button>
+                        
+                        <button type="button" class="btn btn-info w-100 mb-2" onclick="runSensitivityAnalysis()">
+                            🔍 Sensitivity Analysis
+                        </button>
+                        
+                        <button type="button" class="btn btn-warning w-100" onclick="downloadResults()">
+                            💾 Download Results
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Key Metrics -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">📈 Key Metrics</h5>
+                    </div>
+                    <div class="card-body" id="keyMetricsPanel">
+                        <p class="text-muted">Run a simulation to see key metrics</p>
+                    </div>
+                </div>
             </div>
-            <div class="card-body" id="statisticsPanel">
-                <p class="text-muted">Run a simulation to see statistics</p>
+            
+            <!-- Right Panel - Results -->
+            <div class="col-md-8">
+                <!-- Navigation Tabs -->
+                <ul class="nav nav-tabs" id="resultTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="simulation-tab" data-bs-toggle="tab" data-bs-target="#simulation" type="button">
+                            🦠 Disease Progression
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="comparison-tab" data-bs-toggle="tab" data-bs-target="#comparison" type="button">
+                            📊 Scenario Comparison
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="statistics-tab" data-bs-toggle="tab" data-bs-target="#statistics" type="button">
+                            📈 Detailed Statistics
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="sensitivity-tab" data-bs-toggle="tab" data-bs-target="#sensitivity" type="button">
+                            🔍 Sensitivity Analysis
+                        </button>
+                    </li>
+                </ul>
+                
+                <!-- Tab Content -->
+                <div class="tab-content" id="resultTabContent">
+                    <!-- Simulation Results Tab -->
+                    <div class="tab-pane fade show active" id="simulation" role="tabpanel">
+                        <div id="plotContainer" class="plot-container" style="height: 500px;">
+                            <div class="d-flex justify-content-center align-items-center h-100">
+                                <div class="text-center">
+                                    <h4 class="text-muted">🦠 SEIRD Disease Model</h4>
+                                    <p class="text-muted">Run a simulation to see disease progression over time</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div id="hospitalPlotContainer" class="plot-container" style="height: 300px;">
+                                    <div class="d-flex justify-content-center align-items-center h-100">
+                                        <p class="text-muted">Hospital capacity analysis</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div id="vaccinationPlotContainer" class="plot-container" style="height: 300px;">
+                                    <div class="d-flex justify-content-center align-items-center h-100">
+                                        <p class="text-muted">Vaccination progress</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Comparison Tab -->
+                    <div class="tab-pane fade" id="comparison" role="tabpanel">
+                        <div id="comparisonContainer" class="plot-container" style="height: 500px;">
+                            <div class="d-flex justify-content-center align-items-center h-100">
+                                <div class="text-center">
+                                    <h4 class="text-muted">📊 Intervention Comparison</h4>
+                                    <p class="text-muted">Use "Compare All Scenarios" to see intervention effectiveness</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="statisticalAnalysisContainer" class="mt-3">
+                            <!-- Statistical analysis results will be inserted here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Statistics Tab -->
+                    <div class="tab-pane fade" id="statistics" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">📊 Simulation Statistics</h6>
+                                    </div>
+                                    <div class="card-body" id="statisticsPanel">
+                                        <p class="text-muted">Run a simulation to see detailed statistics</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">🎯 Confidence Intervals</h6>
+                                    </div>
+                                    <div class="card-body" id="confidencePanel">
+                                        <p class="text-muted">Statistical confidence intervals will appear here</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">📋 Simulation Parameters</h6>
+                            </div>
+                            <div class="card-body" id="parametersPanel">
+                                <p class="text-muted">Current simulation parameters will be displayed here</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sensitivity Analysis Tab -->
+                    <div class="tab-pane fade" id="sensitivity" role="tabpanel">
+                        <div id="sensitivityContainer" class="plot-container" style="height: 500px;">
+                            <div class="d-flex justify-content-center align-items-center h-100">
+                                <div class="text-center">
+                                    <h4 class="text-muted">🔍 Parameter Sensitivity</h4>
+                                    <p class="text-muted">Use "Sensitivity Analysis" to see how parameters affect outcomes</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h5>Simulation Results</h5>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
             </div>
-            <div class="card-body">
-                <div id="plotContainer" style="height: 500px;">
-                    <div class="d-flex justify-content-center align-items-center h-100">
-                        <p class="text-muted">Run a simulation to see results</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card mt-3">
-            <div class="card-header">
-                <h5>Scenario Comparison</h5>
-            </div>
-            <div class="card-body">
-                <div id="comparisonContainer" style="height: 400px;">
-                    <div class="d-flex justify-content-center align-items-center h-100">
-                        <p class="text-muted">Use "Compare Scenarios" to see comparisons</p>
-                    </div>
-                </div>
-            </div>
+            <h5 class="mt-3">Running Simulation...</h5>
+            <p class="text-muted">This may take a few moments</p>
         </div>
     </div>
-</div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentResults = null;
+        let comparisonResults = null;
+        let sensitivityResults = null;
 
-<div id="loadingModal" class="modal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-body text-center">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
+        function getFormData() {
+            return {
+                population: parseInt(document.getElementById('population').value),
+                initial_infected: parseInt(document.getElementById('initial_infected').value),
+                transmission_rate: parseFloat(document.getElementById('transmission_rate').value),
+                infectious_period: parseInt(document.getElementById('infectious_period').value),
+                incubation_period: parseInt(document.getElementById('incubation_period').value),
+                mortality_rate: parseFloat(document.getElementById('mortality_rate').value),
+                hospitalization_rate: parseFloat(document.getElementById('hospitalization_rate').value),
+                simulation_days: parseInt(document.getElementById('simulation_days').value),
+                num_runs: parseInt(document.getElementById('num_runs').value),
+                vaccination_rate: parseFloat(document.getElementById('vaccination_rate').value),
+                vaccine_supply_delay: parseInt(document.getElementById('vaccine_supply_delay').value),
+                second_dose_delay: parseInt(document.getElementById('second_dose_delay').value),
+                vaccine_effectiveness_1dose: parseFloat(document.getElementById('vaccine_effectiveness_1dose').value),
+                vaccine_effectiveness_2dose: parseFloat(document.getElementById('vaccine_effectiveness_2dose').value),
+                mask_effectiveness: parseFloat(document.getElementById('mask_effectiveness').value),
+                mask_compliance: parseFloat(document.getElementById('mask_compliance').value),
+                social_distancing: parseFloat(document.getElementById('social_distancing').value),
+                social_distancing_compliance: parseFloat(document.getElementById('social_distancing_compliance').value),
+                location_type: document.getElementById('location_type').value
+            };
+        }
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        function runSimulation() {
+            const formData = getFormData();
+            showLoading();
+            
+            fetch('/run_simulation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    currentResults = data;
+                    plotResults(data.results);
+                    displayKeyMetrics(data.statistics);
+                    displayDetailedStatistics(data.statistics, data.parameters);
+                    
+                    // Switch to simulation tab
+                    document.getElementById('simulation-tab').click();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Error:', error);
+                alert('Error running simulation');
+            });
+        }
+
+        function plotResults(results) {
+            // Main SEIRD plot
+            const traces = [
+                {
+                    x: results.time,
+                    y: results.susceptible,
+                    name: 'Susceptible',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#28a745', width: 3 },
+                    fill: 'tonexty'
+                },
+                {
+                    x: results.time,
+                    y: results.exposed,
+                    name: 'Exposed',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#ffc107', width: 3 },
+                    fill: 'tonexty'
+                },
+                {
+                    x: results.time,
+                    y: results.infected,
+                    name: 'Infected',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#dc3545', width: 3 },
+                    fill: 'tonexty'
+                },
+                {
+                    x: results.time,
+                    y: results.recovered,
+                    name: 'Recovered',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#6f42c1', width: 3 },
+                    fill: 'tonexty'
+                },
+                {
+                    x: results.time,
+                    y: results.deaths,
+                    name: 'Deaths',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#343a40', width: 3 },
+                    fill: 'tonexty'
+                }
+            ];
+            
+            // Add confidence intervals if available
+            if (results.infected_ci_lower) {
+                traces.push({
+                    x: results.time.concat(results.time.slice().reverse()),
+                    y: results.infected_ci_lower.concat(results.infected_ci_upper.slice().reverse()),
+                    fill: 'toself',
+                    fillcolor: 'rgba(220, 53, 69, 0.2)',
+                    line: { color: 'transparent' },
+                    name: '95% CI (Infected)',
+                    showlegend: false
+                });
+            }
+            
+            const layout = {
+                title: {
+                    text: 'SEIRD Model - Disease Progression Over Time',
+                    font: { size: 18, color: '#2d3436' }
+                },
+                xaxis: { 
+                    title: 'Days',
+                    gridcolor: '#e0e0e0'
+                },
+                yaxis: { 
+                    title: 'Number of People',
+                    gridcolor: '#e0e0e0'
+                },
+                hovermode: 'x unified',
+                showlegend: true,
+                margin: { t: 60, r: 30, b: 50, l: 60 },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+            
+            Plotly.newPlot('plotContainer', traces, layout, {responsive: true});
+            
+            // Hospital capacity plot
+            if (results.hospitalized) {
+                plotHospitalization(results);
+            }
+            
+            // Vaccination progress plot
+            if (results.vaccinated_1dose && results.vaccinated_2dose) {
+                plotVaccination(results);
+            }
+        }
+
+        function plotHospitalization(results) {
+            const traces = [
+                {
+                    x: results.time,
+                    y: results.hospitalized,
+                    name: 'Hospitalized',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#e74c3c', width: 3 },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(231, 76, 60, 0.3)'
+                }
+            ];
+            
+            const layout = {
+                title: 'Hospital Capacity Usage',
+                xaxis: { title: 'Days' },
+                yaxis: { title: 'Hospitalized Cases' },
+                margin: { t: 40, r: 30, b: 40, l: 60 },
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            };
+            
+            Plotly.newPlot('hospitalPlotContainer', traces, layout, {responsive: true});
+        }
+
+        function plotVaccination(results) {
+            const traces = [
+                {
+                    x: results.time,
+                    y: results.vaccinated_1dose,
+                    name: '1st Dose',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#3498db', width: 3 },
+                    fill: 'tozeroy'
+                },
+                {
+                    x: results.time,
+                    y: results.vaccinated_2dose,
+                    name: '2nd Dose (Fully Vaccinated)',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#27ae60', width: 3 },
+                    fill: 'tonexty'
+                }
+            ];
+            
+            const layout = {
+                title: 'Vaccination Progress',
+                xaxis: { title: 'Days' },
+                yaxis: { title: 'Vaccinated People' },
+                margin: { t: 40, r: 30, b: 40, l: 60 },
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            };
+            
+            Plotly.newPlot('vaccinationPlotContainer', traces, layout, {responsive: true});
+        }
+
+        function displayKeyMetrics(stats) {
+            const panel = document.getElementById('keyMetricsPanel');
+            
+            const html = `
+                <div class="metric-card">
+                    <div class="metric-value">${stats.R0.toFixed(2)}</div>
+                    <div class="metric-label">R₀ (Reproduction Number)</div>
                 </div>
-                <p class="mt-3">Running simulation...</p>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
+                <div class="metric-card">
+                    <div class="metric-value">${Math.round(stats.total_infected.mean)}</div>
+                    <div class="metric-label">Total Infected (Mean)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${Math.round(stats.total_deaths.mean)}</div>
+                    <div class="metric-label">Total Deaths (Mean)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${(stats.attack_rate.mean * 100).toFixed(1)}%</div>
+                    <div class="metric-label">Attack Rate</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${(stats.epidemic_probability * 100).toFixed(1)}%</div>
+                    <div class="metric-label">Epidemic Probability</div>
+                </div>
+            `;
+            
+            panel.innerHTML = html;
+        }
+
+        function displayDetailedStatistics(stats, parameters) {
+            // Statistics panel
+            const statsPanel = document.getElementById('statisticsPanel');
+            const statsHtml = `
+                <div class="statistics-item">
+                    <span class="statistics-label">R₀ (Basic Reproduction Number):</span>
+                    <span class="statistics-value">${stats.R0.toFixed(3)}</span>
+                </div>
+                <div class="statistics-item">
+                    <span class="statistics-label">Mean Total Infected:</span>
+                    <span class="statistics-value">${Math.round(stats.total_infected.mean)} ± ${Math.round(stats.total_infected.std)}</span>
+                </div>
+                <div class="statistics-item">
+                    <span class="statistics-label">Mean Total Deaths:</span>
+                    <span class="statistics-value">${Math.round(stats.total_deaths.mean)} ± ${Math.round(stats.total_deaths.std)}</span>
+                </div>
+                <div class="statistics-item">
+                    <span class="statistics-label">Peak Infected:</span>
+                    <span class="statistics-value">${Math.round(stats.peak_infected.mean)} ± ${Math.round(stats.peak_infected.std)}</span>
+                </div>
+                <div class="statistics-item">
+                    <span class="statistics-label">Peak Day:</span>
+                    <span class="statistics-value">${Math.round(stats.peak_day.mean)} ± ${Math.round(stats.peak_day.std)}</span>
+                </div>
+                <div class="statistics-item">
+                    <span class="statistics-label">Epidemic Duration:</span>
+                    <span class="statistics-value">${Math.round(stats.epidemic_duration.mean)} ± ${Math.round(stats.epidemic_duration.std)} days</span>
+                </div>
+                <div class="statistics-item">
+                    <span class="statistics-label">Attack Rate:</span>
+                    <span class="statistics-value">${(stats.attack_rate.mean * 100).toFixed(2)}% ± ${(stats.attack_rate.std * 100).toFixed(2)}%</span>
+                </div>
+                <div class="statistics-item">
+                    <span class="statistics-label">Case Fatality Rate:</span>
+                    <span class="statistics-value">${(stats.case_fatality_rate.mean * 100).toFixed(3)}% ± ${(stats.case_fatality_rate.std * 100).toFixed(3)}%</span>
+                </div>
+            `;
+            statsPanel.innerHTML = statsHtml;
+            
+            // Confidence intervals panel
+            const confidencePanel = document.getElementById('confidencePanel');
+            const confidenceHtml = `
+                <h6 class="text-primary">95% Confidence Intervals</h6>
+                <div class="statistics-item">
+                    <span class="statistics-label">Total Infected:</span>
+                    <span class="statistics-value">${Math.round(stats.total_infected.ci_lower)} - ${Math.round(stats.total_infected.ci_upper)}</span>
+                </div>
+                <div class="statistics-item">
+                    <span class="statistics-label">Total Deaths:</span>
+                    <span class="statistics-value">${Math.round(stats.total_deaths.ci_lower)} - ${Math.round(stats.total_deaths.ci_upper)}</span>
+                </div>
+                <div class="statistics-item">
+                    <span class="statistics-label">Peak Infected:</span>
+                    <span class="statistics-value">${Math.round(stats.peak_infected.ci_lower)} - ${Math.round(stats.peak_infected.ci_upper)}</span>
+                </div>
+                <div class="statistics-item">
+                    <span class="statistics-label">Peak Day:</span>
+                    <span class="statistics-value">${Math.round(stats.peak_day.ci_lower)} - ${Math.round(stats.peak_day.ci_upper)}</span>
+                </div>
+                <div class="statistics-item">
+                    <span class="statistics-label">Epidemic Duration:</span>
+                    <span class="statistics-value">${Math.round(stats.epidemic_duration.ci_lower)} - ${Math.round(stats.epidemic_duration.ci_upper)} days</span>
+                </div>
+            `;
+            confidencePanel.innerHTML = confidenceHtml;
+            
+            // Parameters panel
+            const parametersPanel = document.getElementById('parametersPanel');
+            const parametersHtml = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Disease Parameters</h6>
+                        <div class="statistics-item">
+                            <span class="statistics-label">Population:</span>
+                            <span class="statistics-value">${parameters.population.toLocaleString()}</span>
+                        </div>
+                        <div class="statistics-item">
+                            <span class="statistics-label">Initial Infected:</span>
+                            <span class="statistics-value">${parameters.initial_infected}</span>
+                        </div>
+                        <div class="statistics-item">
+                            <span class="statistics-label">Transmission Rate:</span>
+                            <span class="statistics-value">${parameters.transmission_rate.toFixed(4)}</span>
+                        </div>
+                        <div class="statistics-item">
+                            <span class="statistics-label">Effective Transmission Rate:</span>
+                            <span class="statistics-value">${parameters.effective_transmission_rate.toFixed(4)}</span>
+                        </div>
+                        <div class="statistics-item">
+                            <span class="statistics-label">Infectious Period:</span>
+                            <span class="statistics-value">${parameters.infectious_period.toFixed(1)} days</span>
+                        </div>
+                        <div class="statistics-item">
+                            <span class="statistics-label">Incubation Period:</span>
+                            <span class="statistics-value">${parameters.incubation_period.toFixed(1)} days</span>
+                        </div>
+                        <div class="statistics-item">
+                            <span class="statistics-label">Mortality Rate:</span>
+                            <span class="statistics-value">${(parameters.mortality_rate * 100).toFixed(3)}%</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success">Intervention Parameters</h6>
+                        <div class="statistics-item">
+                            <span class="statistics-label">Vaccination Rate:</span>
+                            <span class="statistics-value">${(parameters.vaccination_rate * 100).toFixed(2)}% daily</span>
+                        </div>
+                        <div class="statistics-item">
+                            <span class="statistics-label">Vaccine Supply Delay:</span>
+                            <span class="statistics-value">${parameters.vaccine_supply_delay} days</span>
+                        </div>
+                        <div class="statistics-item">
+                            <span class="statistics-label">Mask Effectiveness:</span>
+                            <span class="statistics-value">${(parameters.mask_effectiveness * 100).toFixed(1)}%</span>
+                        </div>
+                        <div class="statistics-item">
+                            <span class="statistics-label">Mask Compliance:</span>
+                            <span class="statistics-value">${(parameters.mask_compliance * 100).toFixed(1)}%</span>
+                        </div>
+                        <div class="statistics-item">
+                            <span class="statistics-label">Social Distancing:</span>
+                            <span class="statistics-value">${(parameters.social_distancing * 100).toFixed(1)}%</span>
+                        </div>
+                        <div class="statistics-item">
+                            <span class="statistics-label">Location Type:</span>
+                            <span class="statistics-value">${parameters.location_type}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            parametersPanel.innerHTML = parametersHtml;
+        }
+
+        function compareScenarios() {
+            const baseParams = getFormData();
+            showLoading();
+            
+            fetch('/compare_scenarios', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({base_params: baseParams})
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    comparisonResults = data.comparison_results;
+                    plotComparison(data.comparison_results);
+                    
+                    // Run statistical analysis
+                    runStatisticalAnalysis(data.comparison_results);
+                    
+                    // Switch to comparison tab
+                    document.getElementById('comparison-tab').click();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Error:', error);
+                alert('Error running comparison');
+            });
+        }
+
+        function plotComparison(comparisonResults) {
+            const colors = ['#e74c3c', '#27ae60', '#3498db', '#f39c12', '#9b59b6', '#1abc9c', '#34495e', '#e67e22'];
+            const traces = [];
+            
+            let colorIndex = 0;
+            for (const [scenarioName, scenarioData] of Object.entries(comparisonResults)) {
+                traces.push({
+                    x: scenarioData.results.time,
+                    y: scenarioData.results.infected,
+                    name: scenarioName,
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: colors[colorIndex % colors.length], width: 3 }
+                });
+                colorIndex++;
+            }
+            
+            const layout = {
+                title: {
+                    text: 'Intervention Effectiveness Comparison - Active Infections',
+                    font: { size: 18, color: '#2d3436' }
+                },
+                xaxis: { 
+                    title: 'Days',
+                    gridcolor: '#e0e0e0'
+                },
+                yaxis: { 
+                    title: 'Number of Infected People',
+                    gridcolor: '#e0e0e0'
+                },
+                hovermode: 'x unified',
+                showlegend: true,
+                margin: { t: 60, r: 30, b: 50, l: 60 },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+            
+            Plotly.newPlot('comparisonContainer', traces, layout, {responsive: true});
+        }
+
+        function runStatisticalAnalysis(comparisonResults) {
+            fetch('/statistical_analysis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({scenarios_data: comparisonResults})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayStatisticalAnalysis(data.statistical_analysis, data.summary);
+                }
+            })
+            .catch(error => {
+                console.error('Error in statistical analysis:', error);
+            });
+        }
+
+        function displayStatisticalAnalysis(analysis, summary) {
+            const container = document.getElementById('statisticalAnalysisContainer');
+            
+            let html = `
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">📊 Statistical Analysis Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <h6>🏆 Most Effective Intervention:</h6>
+                            <p><strong>${summary.most_effective_intervention?.name || 'None identified'}</strong> 
+                            ${summary.most_effective_intervention ? `(${(summary.most_effective_intervention.reduction * 100).toFixed(1)}% reduction)` : ''}</p>
+                        </div>
+                        
+                        <h6>Key Findings:</h6>
+                        <ul>
+            `;
+            
+            if (summary.key_findings && summary.key_findings.length > 0) {
+                summary.key_findings.forEach(finding => {
+                    html += `<li>${finding}</li>`;
+                });
+            } else {
+                html += '<li>No significant findings identified</li>';
+            }
+            
+            html += `
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">📈 Detailed Intervention Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Intervention</th>
+                                        <th>Infections Prevented</th>
+                                        <th>Deaths Prevented</th>
+                                        <th>Peak Reduction</th>
+                                        <th>Effectiveness Rating</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+            `;
+            
+            for (const [scenario, data] of Object.entries(analysis)) {
+                const metrics = data.comparison_metrics;
+                const effectiveness = data.statistical_tests.effect_size?.effectiveness_rating || 'Unknown';
+                
+                html += `
+                    <tr>
+                        <td><strong>${scenario}</strong></td>
+                        <td>${Math.round(metrics.infections_prevented)}</td>
+                        <td>${Math.round(metrics.deaths_prevented)}</td>
+                        <td>${Math.round(metrics.peak_reduction)}</td>
+                        <td><span class="badge bg-${effectiveness === 'High' ? 'success' : effectiveness === 'Medium' ? 'warning' : 'secondary'}">${effectiveness}</span></td>
+                    </tr>
+                `;
+            }
+            
+            html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function runSensitivityAnalysis() {
+            const baseParams = getFormData();
+            showLoading();
+            
+            fetch('/sensitivity_analysis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({base_params: baseParams})
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    sensitivityResults = data.sensitivity_results;
+                    plotSensitivityAnalysis(data.sensitivity_results);
+                    
+                    // Switch to sensitivity tab
+                    document.getElementById('sensitivity-tab').click();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Error:', error);
+                alert('Error running sensitivity analysis');
+            });
+        }
+
+        function plotSensitivityAnalysis(sensitivityResults) {
+            const traces = [];
+            const colors = ['#e74c3c', '#3498db', '#27ae60', '#f39c12'];
+            let colorIndex = 0;
+            
+            for (const [paramName, paramData] of Object.entries(sensitivityResults)) {
+                const xValues = paramData.map(d => d.value);
+                const yValues = paramData.map(d => d.total_infected);
+                
+                traces.push({
+                    x: xValues,
+                    y: yValues,
+                    name: paramName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: colors[colorIndex % colors.length], width: 3 },
+                    marker: { size: 8 }
+                });
+                colorIndex++;
+            }
+            
+            const layout = {
+                title: {
+                    text: 'Parameter Sensitivity Analysis - Total Infections',
+                    font: { size: 18, color: '#2d3436' }
+                },
+                xaxis: { 
+                    title: 'Parameter Value',
+                    gridcolor: '#e0e0e0'
+                },
+                yaxis: { 
+                    title: 'Total Infected',
+                    gridcolor: '#e0e0e0'
+                },
+                hovermode: 'closest',
+                showlegend: true,
+                margin: { t: 60, r: 30, b: 50, l: 60 },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+            
+            Plotly.newPlot('sensitivityContainer', traces, layout, {responsive: true});
+        }
+
+        function downloadResults() {
+            if (!currentResults && !comparisonResults && !sensitivityResults) {
+                alert('No results to download. Please run a simulation first.');
+                return;
+            }
+            
+            const downloadData = {
+                timestamp: new Date().toISOString(),
+                parameters: getFormData(),
+                singleSimulation: currentResults,
+                scenarioComparison: comparisonResults,
+                sensitivityAnalysis: sensitivityResults
+            };
+            
+            const dataStr = JSON.stringify(downloadData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `flu_simulation_results_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+        }
+
+        // Initialize tooltips and other Bootstrap components
+        document.addEventListener('DOMContentLoaded', function() {
+            // You can add any initialization code here
+            console.log('Enhanced Flu Simulation Interface Loaded');
+        });
+    </script>
+</body>
+</html>
