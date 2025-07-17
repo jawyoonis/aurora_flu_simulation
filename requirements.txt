@@ -1,0 +1,9 @@
+Flask
+numpy
+scip
+plotly
+Jinja2
+Werkzeug
+click
+itsdangerous
+MarkupSafe
