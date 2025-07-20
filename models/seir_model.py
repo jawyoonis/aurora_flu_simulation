@@ -3,6 +3,7 @@ import random
 from dataclasses import dataclass
 from typing import List, Dict, Any
 from scipy.integrate import odeint
+from scipy.stats import beta, norm, triang
 import time
 
 @dataclass
@@ -29,7 +30,8 @@ class AuroraFluSimulation:
                  vaccination_rate=0.0, mask_effectiveness=0.6, social_distancing=0.0,
                  mortality_rate=0.0002, vaccination_strategy='none', 
                  vaccine_supply_per_day=500, vaccine_delay_days=0, mask_compliance=0.0,
-                 vaccine_1dose_effectiveness=0.4, vaccine_2dose_effectiveness=0.8):
+                 vaccine_1dose_effectiveness=0.4, vaccine_2dose_effectiveness=0.8,
+                 use_parameter_distributions=True):
         
         # Ensure different random seeds for each simulation
         current_time = int(time.time() * 1000000) % (2**32)
@@ -39,15 +41,31 @@ class AuroraFluSimulation:
         # Aurora Symposium parameters
         self.N = population
         self.I0 = initial_infected
-        self.beta = transmission_rate
         self.gamma = 1/infectious_period
         self.sigma = 1/incubation_period
         self.days = simulation_days
-        self.mortality_rate = mortality_rate
         
-        # Intervention parameters with random variations
-        self.vaccination_rate = vaccination_rate * np.random.uniform(0.8, 1.2)
-        self.mask_effectiveness = mask_effectiveness * np.random.uniform(0.9, 1.1)
+        # Apply parameter distributions if enabled
+        if use_parameter_distributions:
+            # Infection rate (transmission rate): Uniform(0.2, 0.4)
+            self.beta = np.random.uniform(0.2, 0.4)
+            
+            # Mask effectiveness: Normal(0.5, 0.1) - clipped to [0, 1]
+            self.mask_effectiveness = np.clip(np.random.normal(0.5, 0.1), 0, 1)
+            
+            # Vaccination coverage: Triangular(0.5, 0.7, 0.9) - mode at 0.7
+            self.vaccination_rate = np.random.triangular(0.5, 0.7, 0.9)
+            
+            # Death rate: Beta(2, 10) - scaled to reasonable range [0, 0.05]
+            self.mortality_rate = beta.rvs(2, 10) * 0.05
+        else:
+            # Use provided parameters directly
+            self.beta = transmission_rate
+            self.vaccination_rate = vaccination_rate
+            self.mask_effectiveness = mask_effectiveness
+            self.mortality_rate = mortality_rate
+        
+        # Other intervention parameters with random variations
         self.social_distancing = social_distancing * np.random.uniform(0.8, 1.2)
         self.mask_compliance = mask_compliance * np.random.uniform(0.9, 1.1)
         
@@ -540,7 +558,14 @@ class AuroraFluSimulation:
             'r_effective_series': r_effective_series,
             'mean_r_effective': np.mean(r_effective_series[1:6]) if len(r_effective_series) > 5 else 1.0,
             'transmission_events': len(self.transmission_events),
-            'daily_stats': self.daily_stats
+            'daily_stats': self.daily_stats,
+            # Add parameter values used in this simulation
+            'actual_parameters': {
+                'infection_rate': self.beta,
+                'mask_effectiveness': self.mask_effectiveness,
+                'vaccination_coverage': self.vaccination_rate,
+                'death_rate': self.mortality_rate
+            }
         }
     
     def run_multiple_simulations(self, num_runs=50):
@@ -604,6 +629,30 @@ class AuroraFluSimulation:
         for metric in summary_metrics:
             values = [r.get(metric, 0) for r in results_list if metric in r]
             averaged[metric] = np.mean(values) if values else 0
+        
+        # Average the actual parameters used across runs
+        param_values = {
+            'infection_rate': [],
+            'mask_effectiveness': [],
+            'vaccination_coverage': [],
+            'death_rate': []
+        }
+        
+        for result in results_list:
+            if 'actual_parameters' in result:
+                for param, value in result['actual_parameters'].items():
+                    if param in param_values:
+                        param_values[param].append(value)
+        
+        averaged['parameter_statistics'] = {}
+        for param, values in param_values.items():
+            if values:
+                averaged['parameter_statistics'][param] = {
+                    'mean': np.mean(values),
+                    'std': np.std(values),
+                    'min': np.min(values),
+                    'max': np.max(values)
+                }
         
         return averaged
     
@@ -670,6 +719,7 @@ class AuroraFluSimulation:
             'vaccine_delay_days': self.vaccine_delay_days,
             'mask_effectiveness': self.mask_effectiveness,
             'mortality_rate': self.mortality_rate,
+            'vaccination_rate': self.vaccination_rate,
             'use_agent_based': True,
             'scenario': 'Aurora Winter Engineering Symposium 2025',
             'symposium_days': self.symposium_days,
@@ -684,20 +734,21 @@ class SEIRSimulation(AuroraFluSimulation):
     def __init__(self, **kwargs):
         # Map legacy parameters to Aurora parameters
         enhanced_params = {
-            'population': kwargs.get('population', 15000),
+            'population': kwargs.get('population', 14000),
             'initial_infected': kwargs.get('initial_infected', 1),
-            'transmission_rate': kwargs.get('transmission_rate', 0.01),
-            'infectious_period': kwargs.get('infectious_period', 3),
+            'transmission_rate': kwargs.get('transmission_rate', 0.10),
+            'infectious_period': kwargs.get('infectious_period', 4),
             'simulation_days': kwargs.get('simulation_days', 14),
-            'incubation_period': kwargs.get('incubation_period', 2),
+            'incubation_period': kwargs.get('incubation_period', 3),
             'vaccination_rate': kwargs.get('vaccination_rate', 0.0),
             'mask_effectiveness': kwargs.get('mask_effectiveness', 0.6),
             'social_distancing': kwargs.get('social_distancing', 0.0),
             'mortality_rate': kwargs.get('mortality_rate', 0.0002),
             'vaccination_strategy': kwargs.get('vaccination_strategy', 'none'),
-            'vaccine_supply_per_day': kwargs.get('vaccine_supply_per_day', 500),
+            'vaccine_supply_per_day': kwargs.get('vaccine_supply_per_day', 100),
             'vaccine_delay_days': kwargs.get('vaccine_delay_days', 0),
-            'mask_compliance': kwargs.get('mask_compliance', 0.0)
+            'mask_compliance': kwargs.get('mask_compliance', 0.01),
+            'use_parameter_distributions': kwargs.get('use_parameter_distributions', True)
         }
         super().__init__(**enhanced_params)
     
@@ -790,7 +841,8 @@ class SEIRSimulation(AuroraFluSimulation):
                 vaccination_strategy=self.vaccination_strategy,
                 vaccine_supply_per_day=self.vaccine_supply_per_day,
                 vaccine_delay_days=self.vaccine_delay_days,
-                mask_compliance=self.mask_compliance
+                mask_compliance=self.mask_compliance,
+                use_parameter_distributions=True
             )
             
             result = new_sim.run_simulation()

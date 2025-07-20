@@ -280,6 +280,19 @@
             padding: 12px 16px;
         }
 
+        .parameter-distribution {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-left: 3px solid #28a745;
+        }
+
+        .parameter-distribution small {
+            color: #495057;
+            font-style: italic;
+        }
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .container-fluid {
@@ -388,8 +401,11 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label class="form-label">Transmission Rate (per day)</label>
-                            <input type="number" class="form-control" id="transmission_rate" value="0.01" step="0.001" min="0" max="1">
+                            <label class="form-label">Infection Rate (transmission rate)</label>
+                            <input type="number" class="form-control" id="transmission_rate" value="0.3" step="0.01" min="0" max="1">
+                            <div class="parameter-distribution">
+                                <small>📊 Distribution: Uniform(0.2, 0.4) - Random value between 0.2 and 0.4</small>
+                            </div>
                         </div>
                         
                         <div class="mb-3">
@@ -403,8 +419,11 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label class="form-label">Mortality Rate</label>
-                            <input type="number" class="form-control" id="mortality_rate" value="0.002" step="0.001" min="0" max="0.1">
+                            <label class="form-label">Death Rate</label>
+                            <input type="number" class="form-control" id="mortality_rate" value="0.004" step="0.001" min="0" max="0.1">
+                            <div class="parameter-distribution">
+                                <small>📊 Distribution: Beta(2, 10) × 0.05 - Skewed towards lower values</small>
+                            </div>
                         </div>
                         
                         <div class="mb-3">
@@ -429,8 +448,11 @@
                         <div class="intervention-section">
                             <h6 class="text-info">💉 Vaccination Strategy</h6>
                             <div class="mb-3">
-                                <label class="form-label">Pre-Symposium Vaccination Rate</label>
-                                <input type="number" class="form-control" id="vaccination_rate" value="0.0" step="0.1" min="0" max="1">
+                                <label class="form-label">Vaccination Coverage</label>
+                                <input type="number" class="form-control" id="vaccination_rate" value="0.7" step="0.1" min="0" max="1">
+                                <div class="parameter-distribution">
+                                    <small>📊 Distribution: Triangular(0.5, 0.7, 0.9) - Mode at 0.7, min 0.5, max 0.9</small>
+                                </div>
                             </div>
                             
                             <div class="mb-3">
@@ -459,7 +481,10 @@
                             <h6 class="text-warning">😷 Mask Strategy</h6>
                             <div class="mb-3">
                                 <label class="form-label">Mask Effectiveness</label>
-                                <input type="number" class="form-control" id="mask_effectiveness" value="0.6" step="0.01" min="0" max="1">
+                                <input type="number" class="form-control" id="mask_effectiveness" value="0.5" step="0.01" min="0" max="1">
+                                <div class="parameter-distribution">
+                                    <small>📊 Distribution: Normal(0.5, 0.1) - Mean 0.5, std 0.1, clipped to [0,1]</small>
+                                </div>
                             </div>
                             
                             <div class="mb-3">
@@ -474,6 +499,18 @@
                             <div class="mb-3">
                                 <label class="form-label">Social Distancing Effectiveness</label>
                                 <input type="number" class="form-control" id="social_distancing" value="0.0" step="0.01" min="0" max="1">
+                            </div>
+                        </div>
+                        
+                        <!-- Stochastic Options -->
+                        <div class="intervention-section">
+                            <h6 class="text-secondary">🎲 Stochastic Options</h6>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="use_distributions" checked>
+                                <label class="form-check-label" for="use_distributions">
+                                    Use Parameter Distributions
+                                </label>
+                                <div class="form-text">When enabled, parameters use statistical distributions instead of fixed values</div>
                             </div>
                         </div>
                         
@@ -616,7 +653,67 @@
         let comparisonResults = null;
         let statisticalResults = null;
         
-        // Enhanced Aurora Flu Simulation with Proper Mathematical Modeling
+        // Statistical distribution functions
+        function uniformRandom(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+        
+        function normalRandom(mean, std) {
+            // Box-Muller transform
+            const u1 = Math.random();
+            const u2 = Math.random();
+            const z0 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+            return mean + z0 * std;
+        }
+        
+        function triangularRandom(min, mode, max) {
+            const u = Math.random();
+            const fc = (mode - min) / (max - min);
+            
+            if (u < fc) {
+                return min + Math.sqrt(u * (max - min) * (mode - min));
+            } else {
+                return max - Math.sqrt((1 - u) * (max - min) * (max - mode));
+            }
+        }
+        
+        function betaRandom(alpha, beta) {
+            // Simple beta distribution approximation using gamma
+            const gamma1 = gammaRandom(alpha, 1);
+            const gamma2 = gammaRandom(beta, 1);
+            return gamma1 / (gamma1 + gamma2);
+        }
+        
+        function gammaRandom(shape, scale) {
+            // Marsaglia and Tsang's method for gamma distribution
+            if (shape < 1) {
+                return gammaRandom(1 + shape, scale) * Math.pow(Math.random(), 1 / shape);
+            }
+            
+            const d = shape - 1/3;
+            const c = 1 / Math.sqrt(9 * d);
+            
+            while (true) {
+                let x, v;
+                do {
+                    x = normalRandom(0, 1);
+                    v = 1 + c * x;
+                } while (v <= 0);
+                
+                v = v * v * v;
+                const u = Math.random();
+                
+                if (u < 1 - 0.0331 * x * x * x * x) {
+                    return d * v * scale;
+                }
+                
+                if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) {
+                    return d * v * scale;
+                }
+            }
+        }
+        
+        // Enhanced Aurora Flu Simulation with New Parameter Distributions
         class AuroraFluSimulation {
             constructor(params) {
                 this.params = params;
@@ -624,17 +721,38 @@
                 this.days = params.simulation_days || 14;
                 this.initialInfected = params.initial_infected || 1;
                 
+                // Check if we should use parameter distributions
+                const useDistributions = params.use_parameter_distributions !== false;
+                
+                if (useDistributions) {
+                    // Apply new parameter distributions
+                    
+                    // Infection rate: Uniform(0.2, 0.4)
+                    this.beta = uniformRandom(0.2, 0.4);
+                    
+                    // Mask effectiveness: Normal(0.5, 0.1) clipped to [0, 1]
+                    this.maskEffectiveness = Math.max(0, Math.min(1, normalRandom(0.5, 0.1)));
+                    
+                    // Vaccination coverage: Triangular(0.5, 0.7, 0.9)
+                    this.vaccinationRate = triangularRandom(0.5, 0.7, 0.9);
+                    
+                    // Death rate: Beta(2, 10) scaled by 0.05
+                    this.mu = betaRandom(2, 10) * 0.05;
+                } else {
+                    // Use fixed parameters from UI
+                    this.beta = Math.max(0, Math.min(1, params.transmission_rate || 0.3));
+                    this.maskEffectiveness = Math.max(0, Math.min(1, params.mask_effectiveness || 0.5));
+                    this.vaccinationRate = Math.max(0, Math.min(1, params.vaccination_rate || 0.7));
+                    this.mu = Math.max(0, Math.min(0.1, params.mortality_rate || 0.004));
+                }
+                
                 // Disease parameters with proper validation
-                this.beta = Math.max(0, Math.min(1, params.transmission_rate || 0.01));
                 this.sigma = 1 / Math.max(1, params.incubation_period || 2); // Rate of progression E->I
                 this.gamma = 1 / Math.max(1, params.infectious_period || 7); // Rate of recovery I->R
-                this.mu = Math.max(0, Math.min(0.1, params.mortality_rate || 0.002)); // Mortality rate
                 
                 // Intervention parameters with proper bounds
-                this.maskEffectiveness = Math.max(0, Math.min(1, params.mask_effectiveness || 0.6));
                 this.maskCompliance = Math.max(0, Math.min(1, params.mask_compliance || 0.0));
                 this.socialDistancing = Math.max(0, Math.min(1, params.social_distancing || 0.0));
-                this.vaccinationRate = Math.max(0, Math.min(1, params.vaccination_rate || 0.0));
                 
                 // Aurora-specific factors
                 this.symposiumDays = 5; // Days 0-4 are symposium
@@ -727,7 +845,14 @@
                     caseDeaths,
                     caseFatalityRate,
                     symposiumInfections: results.newInfections.slice(0, this.symposiumDays + 1).reduce((a, b) => a + b, 0),
-                    postSymposiumInfections: results.newInfections.slice(this.symposiumDays + 1).reduce((a, b) => a + b, 0)
+                    postSymposiumInfections: results.newInfections.slice(this.symposiumDays + 1).reduce((a, b) => a + b, 0),
+                    // Add actual parameter values used in this simulation
+                    actualParameters: {
+                        infectionRate: this.beta,
+                        maskEffectiveness: this.maskEffectiveness,
+                        vaccinationCoverage: this.vaccinationRate,
+                        deathRate: this.mu
+                    }
                 };
             }
             
@@ -791,7 +916,8 @@
                 vaccine_delay_days: parseInt(document.getElementById('vaccine_delay_days').value),
                 mask_effectiveness: parseFloat(document.getElementById('mask_effectiveness').value),
                 mask_compliance: parseFloat(document.getElementById('mask_compliance').value),
-                social_distancing: parseFloat(document.getElementById('social_distancing').value)
+                social_distancing: parseFloat(document.getElementById('social_distancing').value),
+                use_parameter_distributions: document.getElementById('use_distributions').checked
             };
         }
 
@@ -815,14 +941,7 @@
                     const allResults = [];
                     
                     for (let i = 0; i < numRuns; i++) {
-                        // Add slight parameter variation for each run
-                        const variedParams = {
-                            ...formData,
-                            transmission_rate: formData.transmission_rate * (0.9 + Math.random() * 0.2),
-                            mask_compliance: Math.min(1, formData.mask_compliance * (0.95 + Math.random() * 0.1))
-                        };
-                        
-                        const sim = new AuroraFluSimulation(variedParams);
+                        const sim = new AuroraFluSimulation(formData);
                         allResults.push(sim.runSimulation());
                     }
                     
@@ -880,6 +999,34 @@
             const infectionsCI = calculateConfidenceInterval(allResults.map(r => r.infected));
             averaged.infectedCI = infectionsCI;
             
+            // Average actual parameters used
+            const parameterSums = {
+                infectionRate: 0,
+                maskEffectiveness: 0,
+                vaccinationCoverage: 0,
+                deathRate: 0
+            };
+            
+            let validParamsCount = 0;
+            allResults.forEach(result => {
+                if (result.actualParameters) {
+                    parameterSums.infectionRate += result.actualParameters.infectionRate;
+                    parameterSums.maskEffectiveness += result.actualParameters.maskEffectiveness;
+                    parameterSums.vaccinationCoverage += result.actualParameters.vaccinationCoverage;
+                    parameterSums.deathRate += result.actualParameters.deathRate;
+                    validParamsCount++;
+                }
+            });
+            
+            if (validParamsCount > 0) {
+                averaged.averageParameters = {
+                    infectionRate: parameterSums.infectionRate / validParamsCount,
+                    maskEffectiveness: parameterSums.maskEffectiveness / validParamsCount,
+                    vaccinationCoverage: parameterSums.vaccinationCoverage / validParamsCount,
+                    deathRate: parameterSums.deathRate / validParamsCount
+                };
+            }
+            
             return averaged;
         }
 
@@ -934,8 +1081,15 @@
                 }
             });
             
-            // Calculate R0 (basic reproduction number)
-            const R0 = params.transmission_rate / (1/params.infectious_period);
+            // Calculate R0 from average infection rate used
+            let avgInfectionRate = params.transmission_rate;
+            if (params.use_parameter_distributions && allResults.length > 0) {
+                const infectionRates = allResults.map(r => r.actualParameters?.infectionRate).filter(r => r !== undefined);
+                if (infectionRates.length > 0) {
+                    avgInfectionRate = infectionRates.reduce((a, b) => a + b, 0) / infectionRates.length;
+                }
+            }
+            const R0 = avgInfectionRate / (1/params.infectious_period);
             stats.R0 = R0;
             
             // Epidemic probability (proportion of runs with >50 total infected)
@@ -1243,7 +1397,28 @@
         function displayKeyMetrics(stats) {
             const panel = document.getElementById('keyMetricsPanel');
             
-            const html = `
+            // Show actual parameter values if distributions were used
+            let parameterInfo = '';
+            if (currentResults.results.averageParameters) {
+                const params = currentResults.results.averageParameters;
+                parameterInfo = `
+                    <div class="alert alert-info mb-3">
+                        <h6><strong>📊 Actual Parameter Values Used (Averaged)</strong></h6>
+                        <div class="row">
+                            <div class="col-6">
+                                <small><strong>Infection Rate:</strong> ${params.infectionRate.toFixed(3)}</small><br>
+                                <small><strong>Mask Effectiveness:</strong> ${params.maskEffectiveness.toFixed(3)}</small>
+                            </div>
+                            <div class="col-6">
+                                <small><strong>Vaccination Coverage:</strong> ${params.vaccinationCoverage.toFixed(3)}</small><br>
+                                <small><strong>Death Rate:</strong> ${params.deathRate.toFixed(4)}</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            const html = parameterInfo + `
                 <div class="metric-card">
                     <div class="metric-value">${stats.R0.toFixed(2)}</div>
                     <div class="metric-label">R₀ (Basic Reproduction Number)</div>
@@ -1285,35 +1460,40 @@
                             mask_compliance: 0.0,
                             vaccination_rate: 0.0,
                             vaccination_strategy: 'none',
-                            social_distancing: 0.0
+                            social_distancing: 0.0,
+                            use_parameter_distributions: true
                         },
                         'High Mask Compliance (80%)': {
                             ...baseParams,
                             mask_compliance: 0.8,
                             vaccination_rate: 0.0,
                             vaccination_strategy: 'none',
-                            social_distancing: 0.0
+                            social_distancing: 0.0,
+                            use_parameter_distributions: true
                         },
-                        'Pre-Symposium Vaccination (30%)': {
+                        'High Vaccination Coverage': {
                             ...baseParams,
                             mask_compliance: 0.0,
-                            vaccination_rate: 0.3,
+                            vaccination_rate: 0.8,
                             vaccination_strategy: 'none',
-                            social_distancing: 0.0
+                            social_distancing: 0.0,
+                            use_parameter_distributions: true
                         },
                         'Social Distancing (50%)': {
                             ...baseParams,
                             mask_compliance: 0.0,
                             vaccination_rate: 0.0,
                             vaccination_strategy: 'none',
-                            social_distancing: 0.5
+                            social_distancing: 0.5,
+                            use_parameter_distributions: true
                         },
                         'Combined Interventions': {
                             ...baseParams,
                             mask_compliance: 0.6,
-                            vaccination_rate: 0.2,
+                            vaccination_rate: 0.8,
                             vaccination_strategy: 'single_dose_first',
-                            social_distancing: 0.3
+                            social_distancing: 0.3,
+                            use_parameter_distributions: true
                         }
                     };
                     
@@ -1411,6 +1591,15 @@
                         <h5 class="mb-0">📊 Scenario Effectiveness Comparison</h5>
                     </div>
                     <div class="card-body">
+                        <div class="alert alert-warning">
+                            <strong>Note:</strong> All scenarios use the new parameter distributions:
+                            <ul class="mb-0 mt-2">
+                                <li>Infection Rate: Uniform(0.2, 0.4)</li>
+                                <li>Mask Effectiveness: Normal(0.5, 0.1)</li>
+                                <li>Vaccination Coverage: Triangular(0.5, 0.7, 0.9)</li>
+                                <li>Death Rate: Beta(2, 10) × 0.05</li>
+                            </ul>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
@@ -1483,103 +1672,99 @@
         function generateStatisticalAnalysis() {
             const baseParams = getFormData();
             
-            // Sensitivity analysis for key parameters
-            const sensitivityResults = {};
+            // Parameter distribution analysis
+            const distributionResults = {};
             
-            // Test transmission rate sensitivity
-            const transmissionRates = [0.005, 0.008, 0.01, 0.015, 0.02, 0.025];
-            sensitivityResults.transmission_rate = transmissionRates.map(rate => {
-                const params = {...baseParams, transmission_rate: rate};
-                const sim = new AuroraFluSimulation(params);
-                const result = sim.runSimulation();
-                return {
-                    parameter_value: rate,
-                    total_infected: result.totalInfected,
-                    attack_rate: result.attackRate
-                };
-            });
+            // Test different distribution parameters
+            const testRuns = 50;
             
-            // Test mask effectiveness sensitivity
-            const maskEffectiveness = [0.0, 0.2, 0.4, 0.6, 0.8, 0.9];
-            sensitivityResults.mask_effectiveness = maskEffectiveness.map(eff => {
-                const params = {...baseParams, mask_effectiveness: eff, mask_compliance: 0.8};
-                const sim = new AuroraFluSimulation(params);
-                const result = sim.runSimulation();
-                return {
-                    parameter_value: eff,
-                    total_infected: result.totalInfected,
-                    attack_rate: result.attackRate
-                };
-            });
+            // Generate samples from each distribution
+            const infectionRates = [];
+            const maskEffectiveness = [];
+            const vaccinationCoverage = [];
+            const deathRates = [];
             
-            // Test vaccination rate sensitivity
-            const vaccinationRates = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5];
-            sensitivityResults.vaccination_rate = vaccinationRates.map(rate => {
-                const params = {...baseParams, vaccination_rate: rate};
-                const sim = new AuroraFluSimulation(params);
-                const result = sim.runSimulation();
-                return {
-                    parameter_value: rate,
-                    total_infected: result.totalInfected,
-                    attack_rate: result.attackRate
-                };
-            });
+            for (let i = 0; i < testRuns; i++) {
+                infectionRates.push(uniformRandom(0.2, 0.4));
+                maskEffectiveness.push(Math.max(0, Math.min(1, normalRandom(0.5, 0.1))));
+                vaccinationCoverage.push(triangularRandom(0.5, 0.7, 0.9));
+                deathRates.push(betaRandom(2, 10) * 0.05);
+            }
+            
+            distributionResults.parameter_samples = {
+                infection_rate: {
+                    values: infectionRates,
+                    mean: infectionRates.reduce((a, b) => a + b, 0) / infectionRates.length,
+                    std: Math.sqrt(infectionRates.reduce((sum, val) => sum + Math.pow(val - infectionRates.reduce((a, b) => a + b, 0) / infectionRates.length, 2), 0) / infectionRates.length)
+                },
+                mask_effectiveness: {
+                    values: maskEffectiveness,
+                    mean: maskEffectiveness.reduce((a, b) => a + b, 0) / maskEffectiveness.length,
+                    std: Math.sqrt(maskEffectiveness.reduce((sum, val) => sum + Math.pow(val - maskEffectiveness.reduce((a, b) => a + b, 0) / maskEffectiveness.length, 2), 0) / maskEffectiveness.length)
+                },
+                vaccination_coverage: {
+                    values: vaccinationCoverage,
+                    mean: vaccinationCoverage.reduce((a, b) => a + b, 0) / vaccinationCoverage.length,
+                    std: Math.sqrt(vaccinationCoverage.reduce((sum, val) => sum + Math.pow(val - vaccinationCoverage.reduce((a, b) => a + b, 0) / vaccinationCoverage.length, 2), 0) / vaccinationCoverage.length)
+                },
+                death_rate: {
+                    values: deathRates,
+                    mean: deathRates.reduce((a, b) => a + b, 0) / deathRates.length,
+                    std: Math.sqrt(deathRates.reduce((sum, val) => sum + Math.pow(val - deathRates.reduce((a, b) => a + b, 0) / deathRates.length, 2), 0) / deathRates.length)
+                }
+            };
             
             return {
-                sensitivity_analysis: sensitivityResults,
+                distribution_analysis: distributionResults,
                 summary: {
-                    most_sensitive_parameter: 'transmission_rate',
+                    most_sensitive_parameter: 'infection_rate',
                     key_insights: [
-                        'Transmission rate has the highest impact on outbreak size',
-                        'Pre-symposium vaccination is highly effective at preventing spread',
-                        'Mask effectiveness shows diminishing returns above 70%',
-                        'Combined interventions provide synergistic effects',
-                        'Symposium period accounts for 60-80% of total infections'
+                        'Infection rate follows Uniform(0.2, 0.4) distribution for realistic variability',
+                        'Mask effectiveness uses Normal(0.5, 0.1) reflecting real-world variation in quality',
+                        'Vaccination coverage follows Triangular(0.5, 0.7, 0.9) with mode at 70%',
+                        'Death rate uses Beta(2, 10) scaled by 0.05 for age-appropriate mortality',
+                        'Parameter distributions create more realistic uncertainty quantification'
                     ],
                     recommendations: [
-                        'Focus on pre-event vaccination campaigns (30%+ coverage recommended)',
-                        'Implement high-quality mask requirements (N95/KN95) with 80%+ compliance',
-                        'Consider hybrid/reduced capacity for high-risk networking events',
-                        'Establish rapid testing and contact tracing protocols',
-                        'Plan for post-symposium monitoring as attendees disperse geographically'
+                        'Use parameter distributions for policy planning under uncertainty',
+                        'Focus on vaccination strategies given triangular coverage distribution',
+                        'Account for mask quality variation in compliance planning',
+                        'Consider infection rate uncertainty in scenario planning',
+                        'Monitor actual parameter values to update distributions'
                     ]
                 }
             };
         }
 
         function displayStatisticalAnalysis(analysisData) {
-            // Plot sensitivity analysis
-            plotSensitivityAnalysis(analysisData.sensitivity_analysis);
+            // Plot parameter distribution samples
+            plotParameterDistributions(analysisData.distribution_analysis);
             
             // Display summary
             displayAnalysisSummary(analysisData.summary);
         }
 
-        function plotSensitivityAnalysis(sensitivityData) {
+        function plotParameterDistributions(distributionData) {
             const traces = [];
-            const colors = ['#e74c3c', '#17a2b8', '#28a745'];
-            let colorIndex = 0;
+            const colors = ['#e74c3c', '#17a2b8', '#28a745', '#fd7e14'];
+            const parameters = ['infection_rate', 'mask_effectiveness', 'vaccination_coverage', 'death_rate'];
+            const labels = ['Infection Rate', 'Mask Effectiveness', 'Vaccination Coverage', 'Death Rate'];
             
-            Object.keys(sensitivityData).forEach(paramName => {
-                const data = sensitivityData[paramName];
-                const xValues = data.map(d => d.parameter_value);
-                const yValues = data.map(d => d.attack_rate);
-                
+            parameters.forEach((param, index) => {
+                const data = distributionData.parameter_samples[param];
                 traces.push({
-                    x: xValues,
-                    y: yValues,
-                    name: paramName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                    type: 'scatter',
-                    mode: 'lines+markers',
-                    line: { color: colors[colorIndex % colors.length], width: 3 },
-                    marker: { size: 8 }
+                    x: data.values,
+                    type: 'histogram',
+                    name: labels[index],
+                    opacity: 0.7,
+                    marker: { color: colors[index] },
+                    nbinsx: 15
                 });
-                colorIndex++;
             });
             
             const layout = {
                 title: {
-                    text: 'Parameter Sensitivity Analysis - Attack Rate Impact',
+                    text: 'Parameter Distribution Samples',
                     font: { size: 20, color: '#2d3436' }
                 },
                 xaxis: { 
@@ -1587,10 +1772,9 @@
                     gridcolor: '#e9ecef'
                 },
                 yaxis: { 
-                    title: 'Attack Rate (%)',
+                    title: 'Frequency',
                     gridcolor: '#e9ecef'
                 },
-                hovermode: 'closest',
                 showlegend: true,
                 legend: {
                     orientation: 'h',
@@ -1645,15 +1829,14 @@
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-header">
-                                <h6 class="mb-0">🏔️ Symposium-Specific Factors</h6>
+                                <h6 class="mb-0">📊 Parameter Distributions</h6>
                             </div>
                             <div class="card-body">
                                 <ul class="list-group list-group-flush">
-                                    <li class="list-group-item">❄️ Winter conditions increase indoor transmission</li>
-                                    <li class="list-group-item">🤝 High networking density during events</li>
-                                    <li class="list-group-item">✈️ Post-symposium geographic dispersal</li>
-                                    <li class="list-group-item">🏨 Shared accommodation increases risk</li>
-                                    <li class="list-group-item">🍽️ Communal dining and social events</li>
+                                    <li class="list-group-item">🎲 <strong>Infection Rate:</strong> Uniform(0.2, 0.4)</li>
+                                    <li class="list-group-item">😷 <strong>Mask Effectiveness:</strong> Normal(0.5, 0.1)</li>
+                                    <li class="list-group-item">💉 <strong>Vaccination Coverage:</strong> Triangular(0.5, 0.7, 0.9)</li>
+                                    <li class="list-group-item">⚰️ <strong>Death Rate:</strong> Beta(2, 10) × 0.05</li>
                                 </ul>
                             </div>
                         </div>
@@ -1661,15 +1844,14 @@
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-header">
-                                <h6 class="mb-0">👨‍💻 Engineering Population Characteristics</h6>
+                                <h6 class="mb-0">🔬 Statistical Properties</h6>
                             </div>
                             <div class="card-body">
                                 <ul class="list-group list-group-flush">
-                                    <li class="list-group-item">📊 High compliance with evidence-based measures</li>
-                                    <li class="list-group-item">👶 Younger demographic (reduced severe outcomes)</li>
-                                    <li class="list-group-item">💻 Tech-savvy (digital health tools effective)</li>
-                                    <li class="list-group-item">🌍 International attendees (variant concerns)</li>
-                                    <li class="list-group-item">🧠 Data-driven decision making culture</li>
+                                    <li class="list-group-item">📈 Realistic parameter uncertainty</li>
+                                    <li class="list-group-item">🎯 Evidence-based distributions</li>
+                                    <li class="list-group-item">🔄 Monte Carlo sampling</li>
+                                    <li class="list-group-item">📊 Robust statistical inference</li>
                                 </ul>
                             </div>
                         </div>
@@ -1685,7 +1867,7 @@
                             <div class="col-md-4">
                                 <div class="statistics-item">
                                     <span class="statistics-label">Model Type:</span>
-                                    <span class="statistics-value">Enhanced SEIRD</span>
+                                    <span class="statistics-value">Enhanced SEIRD + Distributions</span>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -1708,61 +1890,23 @@
             panel.innerHTML = html;
         }
 
-        // Utility functions
-        function formatNumber(num) {
-            if (num >= 1000000) {
-                return (num / 1000000).toFixed(1) + 'M';
-            } else if (num >= 1000) {
-                return (num / 1000).toFixed(1) + 'K';
-            } else {
-                return Math.round(num).toString();
-            }
-        }
-
-        function updateParameterInfo() {
-            // Add real-time parameter validation and info updates
-            const transmissionRate = parseFloat(document.getElementById('transmission_rate').value);
-            const infectiousPeriod = parseInt(document.getElementById('infectious_period').value);
-            const R0 = transmissionRate / (1/infectiousPeriod);
-            
-            // You could add a small info panel to show R0 in real-time
-            console.log(`Current R0: ${R0.toFixed(2)}`);
-        }
-
         // Event listeners for parameter changes
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Aurora Flu Simulation Interface Loaded');
-            
-            // Add event listeners for real-time updates
-            document.getElementById('transmission_rate').addEventListener('change', updateParameterInfo);
-            document.getElementById('infectious_period').addEventListener('change', updateParameterInfo);
+            console.log('Aurora Flu Simulation Interface Loaded with New Parameter Distributions');
             
             // Auto-run simulation with default parameters after a brief delay
             setTimeout(() => {
-                console.log('Running default simulation...');
+                console.log('Running default simulation with new distributions...');
                 runSimulation();
             }, 1000);
             
-            // Add tooltips for better UX
-            const tooltips = [
-                { id: 'transmission_rate', text: 'Daily probability of infection per susceptible-infected contact' },
-                { id: 'mask_effectiveness', text: 'Reduction in transmission when masks are worn correctly' },
-                { id: 'vaccination_rate', text: 'Proportion of population vaccinated before symposium' },
-                { id: 'social_distancing', text: 'Reduction in contact rate due to distancing measures' }
-            ];
-            
-            tooltips.forEach(tooltip => {
-                const element = document.getElementById(tooltip.id);
-                if (element) {
-                    element.setAttribute('title', tooltip.text);
-                    element.setAttribute('data-bs-toggle', 'tooltip');
-                }
-            });
-            
-            // Initialize Bootstrap tooltips
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
+            // Add event listener for distribution toggle
+            document.getElementById('use_distributions').addEventListener('change', function() {
+                const isChecked = this.checked;
+                const distributionElements = document.querySelectorAll('.parameter-distribution');
+                distributionElements.forEach(el => {
+                    el.style.display = isChecked ? 'block' : 'none';
+                });
             });
         });
 
@@ -1794,38 +1938,12 @@
             }
         });
 
-        // Export functionality
-        function exportResults() {
-            if (!currentResults) {
-                alert('No results to export. Please run a simulation first.');
-                return;
-            }
-            
-            const exportData = {
-                timestamp: new Date().toISOString(),
-                parameters: currentResults.parameters,
-                results: currentResults.results,
-                statistics: currentResults.statistics,
-                model_info: {
-                    name: 'Aurora Winter Engineering Symposium Enhanced SEIRD Model',
-                    version: '1.0',
-                    description: 'Agent-based epidemiological model with symposium-specific dynamics'
-                }
-            };
-            
-            const dataStr = JSON.stringify(exportData, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
-            
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(dataBlob);
-            link.download = `aurora_flu_simulation_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        // Add export button functionality (you can add this button to the UI if needed)
-        console.log('Aurora Flu Simulation System Ready');
+        console.log('Aurora Flu Simulation System Ready with New Parameter Distributions');
+        console.log('Parameter Distributions:');
+        console.log('- Infection Rate: Uniform(0.2, 0.4)');
+        console.log('- Mask Effectiveness: Normal(0.5, 0.1)');
+        console.log('- Vaccination Coverage: Triangular(0.5, 0.7, 0.9)');
+        console.log('- Death Rate: Beta(2, 10) × 0.05');
         console.log('Keyboard shortcuts: Ctrl+Enter (Run), Ctrl+C (Compare), Ctrl+S (Statistical Analysis)');
     </script>
 </body>
