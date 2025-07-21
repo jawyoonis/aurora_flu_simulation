@@ -1,0 +1,89 @@
+Run 1 no intervention
+
+Simulation parameters:
+population=15000,
+        initial_infected=1,
+        transmission_rate=0.01,
+        infectious_period=3,
+        simulation_days=14,
+        incubation_period=2,
+        vaccination_rate=0.0,
+        mask_effectiveness=0.0,
+        social_distancing=0.0,
+        mortality_rate=0.0002,
+        vaccination_strategy='none',
+        vaccine_supply_per_day=500,
+        vaccine_delay_days=0,
+        mask_compliance=0.0
+
+
+Run 2 with Mask 
+
+        population=15000,
+        initial_infected=1,
+        transmission_rate=0.01,
+        infectious_period=3,
+        simulation_days=14,
+        incubation_period=2,
+        vaccination_rate=0.0,
+        mask_effectiveness=0.7,
+        social_distancing=0.0,
+        mortality_rate=0.0002,
+        vaccination_strategy='none',
+        vaccine_supply_per_day=500,
+        vaccine_delay_days=0,
+        mask_compliance=0.7
+
+
+
+Run 3 social distancing 
+
+       population=15000,
+        initial_infected=1,
+        transmission_rate=0.01,
+        infectious_period=3,
+        simulation_days=14,
+        incubation_period=2,
+        vaccination_rate=0.0,
+        mask_effectiveness=0.0,
+        social_distancing=0.7,
+        mortality_rate=0.0002,
+        vaccination_strategy='none',
+        vaccine_supply_per_day=500,
+        vaccine_delay_days=0,
+        mask_compliance=0.0
+
+
+Run 4 vaccination 
+
+        population=15000,
+        initial_infected=1,
+        transmission_rate=0.01,
+        infectious_period=3,
+        simulation_days=14,
+        incubation_period=2,
+        vaccination_rate=0.1,
+        mask_effectiveness=0.0,
+        social_distancing=0.0,
+        mortality_rate=0.0002,
+        vaccination_strategy='single_dose_first',
+        vaccine_supply_per_day=500,
+        vaccine_delay_days=7,
+        mask_compliance=0.0
+
+
+Run 5  All interventions 
+        population=15000,
+        initial_infected=1,
+        transmission_rate=0.01,
+        infectious_period=3,
+        simulation_days=14,
+        incubation_period=2,
+        vaccination_rate=0.1,
+        mask_effectiveness=0.7,
+        social_distancing=0.7,
+        mortality_rate=0.0002,
+        vaccination_strategy='single_dose',
+        vaccine_supply_per_day=500,
+        vaccine_delay_days=7,
+        mask_compliance=0.7
